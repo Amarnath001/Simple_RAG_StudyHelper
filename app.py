@@ -25,6 +25,36 @@ if 'documents_loaded' not in st.session_state:
 if 'doc_processor' not in st.session_state:
     st.session_state.doc_processor = DocumentProcessor()
 
+def handle_api_error(e):
+    """Handle API errors with helpful messages."""
+    error_msg = str(e)
+    if "api_key" in error_msg.lower() or "api key" in error_msg.lower():
+        st.error("⚠️ **Gemini API Key Issue**")
+        st.warning("""
+        **What this means:**
+        - Your Gemini API key is missing or invalid
+        
+        **Solutions:**
+        1. **Get your API key**: Visit https://makersuite.google.com/app/apikey
+        2. **Add to .env file**: Create a .env file with: GEMINI_API_KEY=your_key_here
+        3. **Restart the app**: After adding the key, restart the Streamlit app
+        """)
+        return True
+    if "quota" in error_msg.lower() or "insufficient_quota" in error_msg.lower() or "429" in error_msg:
+        st.error("⚠️ **Gemini API Quota Exceeded**")
+        st.warning("""
+        **What this means:**
+        - You've exceeded your Gemini API usage limit
+        - This could be due to: rate limits or daily quotas
+        
+        **Solutions:**
+        1. **Check your usage**: Visit https://makersuite.google.com/app/apikey
+        2. **Wait for quota reset**: Quotas typically reset daily
+        3. **Check rate limits**: Free tier has rate limits per minute
+        """)
+        return True
+    return False
+
 def load_documents(uploaded_files):
     """Load and process uploaded documents."""
     if not uploaded_files:
@@ -54,7 +84,8 @@ def load_documents(uploaded_files):
             st.success(f"Successfully loaded {len(uploaded_files)} file(s) with {len(all_documents)} chunks!")
             return True
     except Exception as e:
-        st.error(f"Error loading documents: {str(e)}")
+        if not handle_api_error(e):
+            st.error(f"Error loading documents: {str(e)}")
         return False
 
 def main():
@@ -67,13 +98,20 @@ def main():
         st.header("📁 Document Management")
         
         # Check for API key
-        api_key = os.getenv("OPENAI_API_KEY")
+        api_key = os.getenv("GEMINI_API_KEY")
         if not api_key:
-            st.error("⚠️ OPENAI_API_KEY not found in environment variables!")
-            st.info("Please create a .env file with your OPENAI_API_KEY")
+            st.error("⚠️ GEMINI_API_KEY not found in environment variables!")
+            st.info("""
+            Please create a .env file with your GEMINI_API_KEY
+            
+            Get your API key from: https://makersuite.google.com/app/apikey
+            
+            Add this to your .env file:
+            GEMINI_API_KEY=your_gemini_api_key_here
+            """)
             st.stop()
         else:
-            st.success("✅ API Key configured")
+            st.success("✅ Gemini API Key configured")
         
         # Document upload
         uploaded_files = st.file_uploader(
@@ -137,7 +175,8 @@ def main():
                                 st.markdown(f"**Source {i}:** {doc.metadata.get('source', 'Unknown')}")
                                 st.text(doc.page_content[:500] + "..." if len(doc.page_content) > 500 else doc.page_content)
                     except Exception as e:
-                        st.error(f"Error: {str(e)}")
+                        if not handle_api_error(e):
+                            st.error(f"Error: {str(e)}")
         
         # Tutorials Tab
         with tab2:
@@ -153,7 +192,8 @@ def main():
                         st.markdown("### Tutorial:")
                         st.write(tutorial)
                     except Exception as e:
-                        st.error(f"Error: {str(e)}")
+                        if not handle_api_error(e):
+                            st.error(f"Error: {str(e)}")
         
         # Practice Questions Tab
         with tab3:
@@ -177,7 +217,8 @@ def main():
                         for i, q in enumerate(questions, 1):
                             st.markdown(f"**{i}.** {q}")
                     except Exception as e:
-                        st.error(f"Error: {str(e)}")
+                        if not handle_api_error(e):
+                            st.error(f"Error: {str(e)}")
         
         # Study Notes Tab
         with tab4:
@@ -203,7 +244,8 @@ def main():
                             mime="text/plain"
                         )
                     except Exception as e:
-                        st.error(f"Error: {str(e)}")
+                        if not handle_api_error(e):
+                            st.error(f"Error: {str(e)}")
 
 if __name__ == "__main__":
     main()
